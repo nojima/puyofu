@@ -68,6 +68,27 @@ def detect_puyo(puyo_image, patterns):
     return best_match
 
 
+def detect_all_puyo(field_image, patterns):
+    result = []
+    for row in xrange(0, PUYO_N_ROWS):
+        row_result = []
+        for col in xrange(0, PUYO_N_COLS):
+            cell_image = extract_cell_at(field_image, row, col)
+            row_result.append(detect_puyo(cell_image, patterns))
+        result.append(row_result)
+    return result
+
+
+def construct_field_image(field_data, patterns):
+    result = np.empty(shape=(PUYO_N_ROWS * PUYO_H, PUYO_N_COLS * PUYO_W, 3), dtype=np.uint8)
+    for row, row_data in enumerate(field_data):
+        for col, data in enumerate(row_data):
+            y = (PUYO_N_ROWS - row - 1) * PUYO_H
+            x = col * PUYO_W
+            result[y:y+PUYO_H, x:x+PUYO_W, :] = patterns[data]
+    return result
+
+
 def main():
     img = cv2.imread("sample.jpeg")
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
