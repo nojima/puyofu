@@ -70,28 +70,32 @@ def extract_cell_at(field_image, row, col):
     return field_image[int(y):int(y+PUYO_H), int(x):int(x+PUYO_W)]
 
 
-def diff_image(image_a, image_b):
-    return np.abs(image_a.astype(float) / 256.0 - image_b.astype(float) / 256.0)
+def diff_image(image_a, image_b, mask):
+    a = image_a.astype(float) / 255.0
+    b = image_b.astype(float) / 255.0
+    return np.abs(a * mask - b * mask)
 
 
-def detect_puyo(puyo_image, patterns):
+def detect_puyo(puyo_image, mask_image, patterns):
     best_match = None
     best_match_diff = 100000000
+    mask = mask_image.astype(float) / 255.0
     for name, pattern in patterns.iteritems():
-        diff = diff_image(puyo_image, pattern).sum()
+        diff = diff_image(puyo_image, pattern, mask).sum()
         if diff < best_match_diff:
             best_match = name
             best_match_diff = diff
     return best_match
 
 
-def detect_all_puyo(field_image, patterns):
+def detect_all_puyo(field_image, mask_image, patterns):
+    mask = mask_image.astype(float) / 255.0
     result = []
     for row in xrange(0, PUYO_N_ROWS):
         row_result = []
         for col in xrange(0, PUYO_N_COLS):
             cell_image = extract_cell_at(field_image, row, col)
-            row_result.append(detect_puyo(cell_image, patterns))
+            row_result.append(detect_puyo(cell_image, mask, patterns))
         result.append(row_result)
     return result
 
