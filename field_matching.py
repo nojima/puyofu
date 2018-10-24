@@ -22,7 +22,7 @@ def load_image(filename):
 
 
 def load_pattern_images():
-    color_names = ["red", "blue", "purple", "yellow"]
+    color_names = ["red", "blue", "purple", "yellow", "empty"]
     result = {}
     for name in color_names:
         sys.stderr.write("load: {}\n".format(name))
