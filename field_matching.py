@@ -1,6 +1,7 @@
 # coding: utf-8
 import sys
 import cv2
+import numpy as np
 import os.path
 import matplotlib.pyplot as plt
 
@@ -50,6 +51,10 @@ def extract_cell_at(field_image, row, col):
     y = (PUYO_N_ROWS - row - 1) * PUYO_H
     x = col * PUYO_W
     return field_image[int(y):int(y+PUYO_H), int(x):int(x+PUYO_W)]
+
+
+def diff_image(image_a, image_b):
+    return np.abs(image_a.astype(float) / 256.0 - image_b.astype(float) / 256.0)
 
 
 def main():
