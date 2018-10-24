@@ -10,6 +10,8 @@ PUYO_H = 67
 PUYO_N_ROWS = 12
 PUYO_N_COLS = 6
 
+CROSS_MARK_DETECT_THRESHOLD = 600
+
 def load_image(filename):
     # imread はファイルが存在しなくてもエラーにならない！！
     if not os.path.exists(filename):
@@ -61,6 +63,14 @@ def crop_to_double_next_puyo_of_1p(screen_image):
     return cv2.resize(img, (PUYO_W, PUYO_H * 2))
 
 
+def crop_to_score_cross_mark_of_1p(screen_image):
+    x = 344
+    y = 629
+    w = 36
+    h = 43
+    return screen_image[y:y+h, x:x+w]
+
+
 def extract_cell_at(field_image, row, col):
     if not (0 <= row < PUYO_N_ROWS) or not (0 <= col < PUYO_N_COLS):
         raise RuntimeError("Out of puyo field: row={}, col={}".format(row, col))
@@ -70,10 +80,13 @@ def extract_cell_at(field_image, row, col):
     return field_image[int(y):int(y+PUYO_H), int(x):int(x+PUYO_W)]
 
 
-def diff_image(image_a, image_b, mask):
+def diff_image(image_a, image_b, mask=None):
     a = image_a.astype(float) / 255.0
     b = image_b.astype(float) / 255.0
-    return np.abs(a * mask - b * mask)
+    if mask is None:
+        return np.abs(a - b)
+    else:
+        return np.abs(a * mask - b * mask)
 
 
 def detect_puyo(puyo_image, mask_image, patterns):
@@ -122,6 +135,12 @@ def detect_double_next_puyo_of_1p(screen_image, mask_image, patterns):
     p1 = detect_puyo(next_image[:PUYO_H, :], mask_image, patterns)
     p2 = detect_puyo(next_image[PUYO_H:, :], mask_image, patterns)
     return [p1, p2]
+
+
+def is_cross_mark_exists_on_1p(screen_image, cross_mark_pattern):
+    actual = crop_to_score_cross_mark_of_1p(screen_image)
+    diff = diff_image(actual, cross_mark_pattern)
+    return diff.sum() < CROSS_MARK_DETECT_THRESHOLD
 
 
 def main():
