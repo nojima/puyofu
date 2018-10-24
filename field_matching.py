@@ -110,6 +110,20 @@ def construct_field_image(field_data, patterns):
     return result
 
 
+def detect_next_puyo_of_1p(screen_image, mask_image, patterns):
+    next_image = crop_to_next_puyo_of_1p(screen_image)
+    p1 = detect_puyo(next_image[:PUYO_H, :], mask_image, patterns)
+    p2 = detect_puyo(next_image[PUYO_H:, :], mask_image, patterns)
+    return [p1, p2]
+
+
+def detect_double_next_puyo_of_1p(screen_image, mask_image, patterns):
+    next_image = crop_to_double_next_puyo_of_1p(screen_image)
+    p1 = detect_puyo(next_image[:PUYO_H, :], mask_image, patterns)
+    p2 = detect_puyo(next_image[PUYO_H:, :], mask_image, patterns)
+    return [p1, p2]
+
+
 def main():
     img = cv2.imread("sample.jpeg")
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
