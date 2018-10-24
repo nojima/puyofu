@@ -57,6 +57,17 @@ def diff_image(image_a, image_b):
     return np.abs(image_a.astype(float) / 256.0 - image_b.astype(float) / 256.0)
 
 
+def detect_puyo(puyo_image, patterns):
+    best_match = None
+    best_match_diff = 100000000
+    for name, pattern in patterns.iteritems():
+        diff = diff_image(puyo_image, pattern).sum()
+        if diff < best_match_diff:
+            best_match = name
+            best_match_diff = diff
+    return best_match
+
+
 def main():
     img = cv2.imread("sample.jpeg")
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
