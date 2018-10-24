@@ -44,6 +44,23 @@ def crop_to_field_of_1p(screen_image):
     return screen_image[y:int(y+h), x:int(x+w)]
 
 
+def crop_to_next_puyo_of_1p(screen_image):
+    x = 799
+    y = 144
+    return screen_image[y:y+2*PUYO_H, x:x+PUYO_W]
+
+
+def crop_to_double_next_puyo_of_1p(screen_image):
+    x = 864
+    y = 279
+    w = 51
+    h = 51
+    img = screen_image[y:y+2*h, x:x+w]
+
+    # サイズが普通のぷよより小さいので、無理やり拡大して揃える
+    return cv2.resize(img, (PUYO_W, PUYO_H * 2))
+
+
 def extract_cell_at(field_image, row, col):
     if not (0 <= row < PUYO_N_ROWS) or not (0 <= col < PUYO_N_COLS):
         raise RuntimeError("Out of puyo field: row={}, col={}".format(row, col))
