@@ -106,11 +106,19 @@ def detect_puyo(puyo_image, mask_image, patterns):
 def detect_all_puyo(field_image, mask_image, patterns):
     mask = mask_image.astype(float) / 255.0
     result = []
+    above_top = [False] * PUYO_N_COLS
     for row in xrange(0, PUYO_N_ROWS):
         row_result = []
         for col in xrange(0, PUYO_N_COLS):
-            cell_image = extract_cell_at(field_image, row, col)
-            row_result.append(detect_puyo(cell_image, mask, patterns))
+            if above_top[col]:
+                # empty なマスよりも上にはぷよは存在しないはず
+                row_result.append("empty")
+            else:
+                cell_image = extract_cell_at(field_image, row, col)
+                puyo = detect_puyo(cell_image, mask, patterns)
+                if puyo == "empty":
+                    above_top[col] = True
+                row_result.append(puyo)
         result.append(row_result)
     return result
 
@@ -186,6 +194,7 @@ def make_event_list(
     for i in chain_start_frame_indices:
         event_points.append((i, "chain"))
     event_points = sorted(event_points)
+    print event_points
 
     events = []
     state = "NORMAL"
@@ -216,6 +225,7 @@ def make_event_list(
                 state = "NORMAL"
 
         if event is not None:
+            print "time={}, kind={}, move={}".format(event.time, event.kind, event.move)
             events.append(event)
         prev_field = field
 
