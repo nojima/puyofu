@@ -1,9 +1,9 @@
 # coding: utf-8
+import os.path
 import sys
 import cv2
-import numpy as np
-import os.path
 import matplotlib.pyplot as plt
+import numpy as np
 
 PUYO_W = 72
 PUYO_H = 67
