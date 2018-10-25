@@ -306,6 +306,20 @@ def detect_gameover_frame(frames, background_pattern):
     return None
 
 
+def pretty_print_events(events, patterns):
+    for event in events:
+        if event.field:
+            img = construct_field_image(event.field, patterns) / 2
+            if event.move:
+                for row, col, puyo in event.move:
+                    y = (PUYO_N_ROWS - row - 1) * PUYO_H
+                    x = col * PUYO_W
+                    img[y:y+PUYO_H, x:x+PUYO_W, :] = patterns[puyo]
+            fig, ax = plt.subplots()
+            ax.set_title("time={}, kind={}".format(event.time, event.kind))
+            ax.imshow(img)
+
+
 def main():
     img = cv2.imread("sample.jpeg")
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
