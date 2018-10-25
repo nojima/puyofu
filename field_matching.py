@@ -1,4 +1,5 @@
 # coding: utf-8
+import collections
 import os.path
 import sys
 import cv2
@@ -170,13 +171,55 @@ def detect_tsumo_frames(frames):
     )[0] + np.array(slide_size)
 
 
-def make_field_data_list(frames, tsumo_frame_indices, mask_image, patterns):
-    field_data_list = []
+Event = collections.namedtuple("Event", ["time", "kind", "field", "move"])
+
+
+def make_event_list(
+        frames,
+        tsumo_frame_indices,
+        chain_start_frame_indices,
+        mask_image,
+        patterns):
+    event_points = []
     for i in tsumo_frame_indices:
+        event_points.append((i, "tsumo"))
+    for i in chain_start_frame_indices:
+        event_points.append((i, "chain"))
+    event_points = sorted(event_points)
+
+    events = []
+    state = "NORMAL"
+    prev_field = None
+
+    for (i, which) in event_points:
         frame = frames[i]
-        data = detect_all_puyo(crop_to_field_of_1p(frame), mask_image, patterns)
-        field_data_list.append(data)
-    return field_data_list
+        field = detect_all_puyo(crop_to_field_of_1p(frame), mask_image, patterns)
+
+        if state == "NORMAL":
+            if which == "chain":
+                assert prev_field is not None
+                move = detect_move(prev_field, field)
+                event = Event(time=i, kind="ChainStart", field=field, move=move)
+                state = "IN_CHAIN"
+            else:
+                if prev_field is None:
+                    # 最初のツモを引いた瞬間なので、イベントとしては記録しない
+                    event = None
+                else:
+                    move = detect_move(prev_field, field)
+                    event = Event(time=i, kind="Stack", field=field, move=move)
+        elif state == "IN_CHAIN":
+            if which == "chain":
+                event = Event(time=i, kind="ChainProgress", field=field, move=None)
+            else:
+                event = Event(time=i, kind="ChainEnd", field=field, move=None)
+                state = "NORMAL"
+
+        if event is not None:
+            events.append(event)
+        prev_field = field
+
+    return events
 
 
 def detect_move(data_prev, data_curr):
@@ -197,6 +240,28 @@ def print_moves(field_data_list):
             print detect_move(field_data_list[i-1], field_data_list[i])
         except RuntimeError as e:
             print e
+
+
+def is_vanishing_start_frame_of_1p(prev_frame, curr_frame, cross_mark_pattern):
+    return (
+        not is_cross_mark_exists_on_1p(prev_frame, cross_mark_pattern) and
+        is_cross_mark_exists_on_1p(curr_frame, cross_mark_pattern)
+    )
+
+
+def detect_chain_start_frames(frames, cross_mark_pattern, tsumo_frame_indices):
+    tsumo_frame_indices = set(tsumo_frame_indices)
+
+    chain_start_frame_indices = []
+    no_vanishment = True
+    for i in xrange(1, len(frames)):
+        if i in tsumo_frame_indices:
+            no_vanishment = True
+        if no_vanishment and is_vanishing_start_frame_of_1p(frames[i-1], frames[i], cross_mark_pattern):
+            chain_start_frame_indices.append(i)
+            no_vanishment = False
+
+    return chain_start_frame_indices
 
 
 def main():
