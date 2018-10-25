@@ -10,7 +10,7 @@ PUYO_H = 67
 PUYO_N_ROWS = 12
 PUYO_N_COLS = 6
 
-CROSS_MARK_DETECT_THRESHOLD = 600
+CROSS_MARK_DETECT_THRESHOLD = 1300
 TSUMO_DETECT_THRESHOLD = 2500
 
 def load_image(filename):
@@ -65,10 +65,10 @@ def crop_to_double_next_puyo_of_1p(screen_image):
 
 
 def crop_to_score_cross_mark_of_1p(screen_image):
-    x = 344
-    y = 629
-    w = 36
-    h = 43
+    x = int(344 / 1280.0 * 1920.0)
+    y = int(629 / 720.0 * 1080.0)
+    w = int(36 / 1280.0 * 1920.0)
+    h = int(43 / 720.0 * 1080.0)
     return screen_image[y:y+h, x:x+w]
 
 
@@ -170,6 +170,15 @@ def detect_tsumo_frames(frames):
     )[0] + np.array(slide_size)
 
 
+def make_field_data_list(frames, tsumo_frame_indices, mask_image, patterns):
+    field_data_list = []
+    for i in tsumo_frame_indices:
+        frame = frames[i]
+        data = detect_all_puyo(crop_to_field_of_1p(frame), mask_image, patterns)
+        field_data_list.append(data)
+    return field_data_list
+
+
 def detect_move(data_prev, data_curr):
     diffs = []
     for row in xrange(len(data_curr)):
@@ -179,6 +188,15 @@ def detect_move(data_prev, data_curr):
     if len(diffs) > 2:
         raise RuntimeError("Failed to detect move: {}".format(diffs))
     return diffs
+
+
+def print_moves(field_data_list):
+    for i in xrange(1, len(field_data_list)):
+        try:
+            print i,
+            print detect_move(field_data_list[i-1], field_data_list[i])
+        except RuntimeError as e:
+            print e
 
 
 def main():
