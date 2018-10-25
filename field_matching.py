@@ -146,7 +146,7 @@ def is_cross_mark_exists_on_1p(screen_image, cross_mark_pattern):
 
 # ツモる瞬間のフレームを検出する。フレームのインデクスの配列を返す。
 def detect_tsumo_frames(frames):
-    slide_size = 2
+    slide_size = 3
 
     frame_diffs1 = []
     frame_diffs2 = []
@@ -168,6 +168,17 @@ def detect_tsumo_frames(frames):
             np.diff(frame_diffs2) > TSUMO_DETECT_THRESHOLD
         )
     )[0] + np.array(slide_size)
+
+
+def detect_move(data_prev, data_curr):
+    diffs = []
+    for row in xrange(len(data_curr)):
+        for col in xrange(len(data_curr[row])):
+            if data_curr[row][col] != data_prev[row][col]:
+                diffs.append((row, col, data_curr[row][col]))
+    if len(diffs) > 2:
+        raise RuntimeError("Failed to detect move: {}".format(diffs))
+    return diffs
 
 
 def main():
