@@ -26,7 +26,7 @@ def load_image(filename):
 
 
 def load_pattern_images():
-    color_names = ["red", "blue", "purple", "yellow", "empty"]
+    color_names = ["red", "blue", "purple", "yellow", "ojama", "empty"]
     result = {}
     for name in color_names:
         sys.stderr.write("load: {}\n".format(name))
@@ -237,6 +237,9 @@ def detect_move(data_prev, data_curr):
     for row in xrange(len(data_curr)):
         for col in xrange(len(data_curr[row])):
             if data_curr[row][col] != data_prev[row][col]:
+                # おじゃまぷよは move に含めない
+                if data_curr[row][col] == "ojama":
+                    continue
                 diffs.append((row, col, data_curr[row][col]))
     if len(diffs) > 2:
         raise RuntimeError("Failed to detect move: {}".format(diffs))
@@ -263,13 +266,9 @@ def detect_chain_start_frames(frames, cross_mark_pattern, tsumo_frame_indices):
     tsumo_frame_indices = set(tsumo_frame_indices)
 
     chain_start_frame_indices = []
-    no_vanishment = True
     for i in xrange(1, len(frames)):
-        if i in tsumo_frame_indices:
-            no_vanishment = True
-        if no_vanishment and is_vanishing_start_frame_of_1p(frames[i-1], frames[i], cross_mark_pattern):
+        if is_vanishing_start_frame_of_1p(frames[i-1], frames[i], cross_mark_pattern):
             chain_start_frame_indices.append(i)
-            no_vanishment = False
 
     return chain_start_frame_indices
 
