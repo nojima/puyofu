@@ -11,6 +11,7 @@ PUYO_N_ROWS = 12
 PUYO_N_COLS = 6
 
 CROSS_MARK_DETECT_THRESHOLD = 600
+TSUMO_DETECT_THRESHOLD = 2500
 
 def load_image(filename):
     # imread はファイルが存在しなくてもエラーにならない！！
@@ -141,6 +142,32 @@ def is_cross_mark_exists_on_1p(screen_image, cross_mark_pattern):
     actual = crop_to_score_cross_mark_of_1p(screen_image)
     diff = diff_image(actual, cross_mark_pattern)
     return diff.sum() < CROSS_MARK_DETECT_THRESHOLD
+
+
+# ツモる瞬間のフレームを検出する。フレームのインデクスの配列を返す。
+def detect_tsumo_frames(frames):
+    slide_size = 2
+
+    frame_diffs1 = []
+    frame_diffs2 = []
+    for i in xrange(slide_size, len(frames)):
+        curr = frames[i]
+        curr_next = crop_to_next_puyo_of_1p(curr)
+        curr_dn = crop_to_double_next_puyo_of_1p(curr)
+
+        prev = frames[i-slide_size]
+        prev_next = crop_to_next_puyo_of_1p(prev)
+        prev_dn = crop_to_double_next_puyo_of_1p(prev)
+
+        frame_diffs1.append(diff_image(curr_next, prev_next).sum())
+        frame_diffs2.append(diff_image(curr_dn, prev_dn).sum())
+
+    return np.where(
+        np.logical_and(
+            np.diff(frame_diffs1) > TSUMO_DETECT_THRESHOLD,
+            np.diff(frame_diffs2) > TSUMO_DETECT_THRESHOLD
+        )
+    )[0] + np.array(slide_size)
 
 
 def main():
