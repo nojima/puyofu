@@ -12,6 +12,7 @@ PUYO_N_ROWS = 12
 PUYO_N_COLS = 6
 
 CROSS_MARK_DETECT_THRESHOLD = 1300
+GAMEOVER_BACKGROUND_THRESHOLD = 10000
 TSUMO_DETECT_THRESHOLD = 2500
 
 def load_image(filename):
@@ -70,6 +71,14 @@ def crop_to_score_cross_mark_of_1p(screen_image):
     y = int(629 / 720.0 * 1080.0)
     w = int(36 / 1280.0 * 1920.0)
     h = int(43 / 720.0 * 1080.0)
+    return screen_image[y:y+h, x:x+w]
+
+
+def crop_to_top_area_of_1p(screen_image):
+    x = 279
+    y = 224
+    w = 443
+    h = 75
     return screen_image[y:y+h, x:x+w]
 
 
@@ -186,6 +195,7 @@ def make_event_list(
         frames,
         tsumo_frame_indices,
         chain_start_frame_indices,
+        gameover_frame_index,
         mask_image,
         patterns):
     event_points = []
@@ -193,6 +203,7 @@ def make_event_list(
         event_points.append((i, "tsumo"))
     for i in chain_start_frame_indices:
         event_points.append((i, "chain"))
+    event_points.append((gameover_frame_index, "gameover"))
     event_points = sorted(event_points)
     print event_points
 
@@ -210,19 +221,33 @@ def make_event_list(
                 move = detect_move(prev_field, field)
                 event = Event(time=i, kind="ChainStart", field=field, move=move)
                 state = "IN_CHAIN"
-            else:
+            elif which == "tsumo":
                 if prev_field is None:
                     # 最初のツモを引いた瞬間なので、イベントとしては記録しない
                     event = None
                 else:
                     move = detect_move(prev_field, field)
                     event = Event(time=i, kind="Stack", field=field, move=move)
+            elif which == "gameover":
+                event = Event(time=i, kind="GameOver", field=None, move=None)
+                state = "GAMEOVER"
+            else:
+                raise RuntimeError("BUG: {}".format(which))
         elif state == "IN_CHAIN":
             if which == "chain":
                 event = Event(time=i, kind="ChainProgress", field=field, move=None)
-            else:
+            elif which == "tsumo":
                 event = Event(time=i, kind="ChainEnd", field=field, move=None)
                 state = "NORMAL"
+            elif which == "gameover":
+                event = Event(time=i, kind="GameOver", field=None, move=None)
+                state = "GAMEOVER"
+            else:
+                raise RuntimeError("BUG: {}".format(which))
+        elif state == "GAMEOVER":
+            event = None
+        else:
+            raise RuntimeError("BUG: {}".format(state))
 
         if event is not None:
             print "time={}, kind={}, move={}".format(event.time, event.kind, event.move)
@@ -271,6 +296,14 @@ def detect_chain_start_frames(frames, cross_mark_pattern, tsumo_frame_indices):
             chain_start_frame_indices.append(i)
 
     return chain_start_frame_indices
+
+
+def detect_gameover_frame(frames, background_pattern):
+    for i in xrange(1, len(frames)):
+        img = crop_to_top_area_of_1p(frames[i])
+        if diff_image(img, background_pattern).sum() < GAMEOVER_BACKGROUND_THRESHOLD:
+            return i
+    return None
 
 
 def main():
