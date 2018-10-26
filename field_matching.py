@@ -188,7 +188,7 @@ def detect_tsumo_frames(frames):
     )[0] + np.array(slide_size)
 
 
-Event = collections.namedtuple("Event", ["time", "kind", "field", "move"])
+Event = collections.namedtuple("Event", ["time", "kind", "field", "move", "chain"])
 
 
 def make_event_list(
@@ -210,6 +210,7 @@ def make_event_list(
     events = []
     state = "NORMAL"
     prev_field = None
+    chain = 1
 
     for (i, which) in event_points:
         frame = frames[i]
@@ -218,8 +219,9 @@ def make_event_list(
         if state == "NORMAL":
             if which == "chain":
                 assert prev_field is not None
+                chain = 1
                 move = detect_move(prev_field, field)
-                event = Event(time=i, kind="ChainStart", field=field, move=move)
+                event = Event(time=i, kind="ChainStart", field=field, move=move, chain=chain)
                 state = "IN_CHAIN"
             elif which == "tsumo":
                 if prev_field is None:
@@ -227,20 +229,21 @@ def make_event_list(
                     event = None
                 else:
                     move = detect_move(prev_field, field)
-                    event = Event(time=i, kind="Stack", field=field, move=move)
+                    event = Event(time=i, kind="Stack", field=field, move=move, chain=0)
             elif which == "gameover":
-                event = Event(time=i, kind="GameOver", field=None, move=None)
+                event = Event(time=i, kind="GameOver", field=None, move=None, chain=0)
                 state = "GAMEOVER"
             else:
                 raise RuntimeError("BUG: {}".format(which))
         elif state == "IN_CHAIN":
             if which == "chain":
-                event = Event(time=i, kind="ChainProgress", field=field, move=None)
+                chain += 1
+                event = Event(time=i, kind="ChainProgress", field=field, move=None, chain=chain)
             elif which == "tsumo":
-                event = Event(time=i, kind="ChainEnd", field=field, move=None)
+                event = Event(time=i, kind="ChainEnd", field=field, move=None, chain=0)
                 state = "NORMAL"
             elif which == "gameover":
-                event = Event(time=i, kind="GameOver", field=None, move=None)
+                event = Event(time=i, kind="GameOver", field=None, move=None, chain=0)
                 state = "GAMEOVER"
             else:
                 raise RuntimeError("BUG: {}".format(which))
@@ -318,6 +321,32 @@ def pretty_print_events(events, patterns):
             fig, ax = plt.subplots()
             ax.set_title("time={}, kind={}".format(event.time, event.kind))
             ax.imshow(img)
+
+
+def generate_puyofu(events):
+    def fugou_one(move):
+        row, col, puyo = move
+        kansuuji = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二"]
+        kanji_puyo = {
+            "red": "赤",
+            "blue": "青",
+            "purple": "紫",
+            "yellow": "黄",
+        }
+        return "▲{}{}{}".format(col + 1, kansuuji[row], kanji_puyo[puyo])
+
+    def fugou(move):
+        return "  ".join(fugou_one(m) for m in move)
+
+    for event in events:
+        if event.kind == "Stack":
+            print "{: >5}:  {}".format(event.time, fugou(event.move))
+        elif event.kind == "ChainStart":
+            print "{: >5}:  {} 発火".format(event.time, fugou(event.move))
+        elif event.kind == "ChainProgress":
+            print "{: >5}:  {}連鎖".format(event.time, event.chain)
+        elif event.kind == "GameOver":
+            print "{: >5}:  ▲投了".format(event.time)
 
 
 def main():
