@@ -1,10 +1,13 @@
 # coding: utf-8
+import argparse
 import collections
 import os.path
 import sys
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 PUYO_W = 72
 PUYO_H = 67
@@ -31,7 +34,7 @@ def load_pattern_images():
     result = {}
     for name in color_names:
         sys.stderr.write("load: {}\n".format(name))
-        result[name] = load_image("patterns/" + name + "-0.png")
+        result[name] = load_image("{}/patterns/{}-0.png".format(BASE_DIR, name))
     return result
 
 
@@ -351,10 +354,55 @@ def generate_puyofu(events):
             print "{: >5}:  ▲投了".format(event.time)
 
 
+# 動画をメモリ上に展開する (長い動画だとやばい)
+def load_movie(movie_path):
+    cap = cv2.VideoCapture(movie_path)
+    if not cap.isOpened():
+        raise RuntimeError("Failed to open movie file: movie_path={}".format(movie_path))
+
+    frames = []
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        # matplotlib でそのまま画像を表示できるように色を変換しておく
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frames.append(img)
+
+    return frames
+
+
 def main():
-    img = cv2.imread("sample.jpeg")
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    plt.imshow(img)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("movie_path", metavar="MOVIE")
+    args = parser.parse_args()
+
+    # 解析に使う画像をロードする
+    patterns = load_pattern_images()
+    cross_mark_image = load_image(os.path.join(BASE_DIR, "cross_mark.png"))
+    cross_mark_image = cv2.resize(cross_mark_image, (54, 64))  # サイズをミスってるので修正
+    background_image = load_image(os.path.join(BASE_DIR, "background_pattern.png"))
+    mask_image = load_image(os.path.join(BASE_DIR, "puyo_mask.png"))
+
+    # 動画をロードする
+    frames = load_movie(args.movie_path)
+
+    # 重要なフレームを検出する
+    tsumo_frame_indices = detect_tsumo_frames(frames)
+    chain_start_frame_indices = detect_chain_start_frames(frames, cross_mark_image, tsumo_frame_indices)
+    gameover_frame_index = detect_gameover_frame(frames, background_image)
+
+    # イベントリストを作る
+    events = make_event_list(
+        frames,
+        tsumo_frame_indices,
+        chain_start_frame_indices,
+        gameover_frame_index,
+        mask_image,
+        patterns)
+
+    # 棋譜を生成して出力する
+    generate_puyofu(events)
 
 
 if __name__ == "__main__":
