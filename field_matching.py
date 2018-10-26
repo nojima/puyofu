@@ -344,7 +344,9 @@ def generate_puyofu(events):
         elif event.kind == "ChainStart":
             print "{: >5}:  {} 発火".format(event.time, fugou(event.move))
         elif event.kind == "ChainProgress":
-            print "{: >5}:  {}連鎖".format(event.time, event.chain)
+            print "{: >5}:  ★{}連鎖".format(event.time, event.chain)
+        elif event.kind == "ChainEnd":
+            print "{: >5}:  ★連鎖終了".format(event.time)
         elif event.kind == "GameOver":
             print "{: >5}:  ▲投了".format(event.time)
 
