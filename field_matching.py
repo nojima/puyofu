@@ -6,6 +6,14 @@ import sys
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+from logging import getLogger, StreamHandler, DEBUG
+
+logger = getLogger(__name__)
+handler = StreamHandler()
+handler.setLevel(DEBUG)
+logger.setLevel(DEBUG)
+logger.addHandler(handler)
+logger.propagate = False
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -19,6 +27,8 @@ GAMEOVER_BACKGROUND_THRESHOLD = 10000
 TSUMO_DETECT_THRESHOLD = 2500
 
 def load_image(filename):
+    logger.info("Load image: {}".format(filename))
+
     # imread はファイルが存在しなくてもエラーにならない！！
     if not os.path.exists(filename):
         raise RuntimeError("not found: {}".format(filename))
@@ -33,7 +43,6 @@ def load_pattern_images():
     color_names = ["red", "blue", "purple", "yellow", "ojama", "empty"]
     result = {}
     for name in color_names:
-        sys.stderr.write("load: {}\n".format(name))
         result[name] = load_image("{}/patterns/{}-0.png".format(BASE_DIR, name))
     return result
 
@@ -208,7 +217,8 @@ def make_event_list(
         event_points.append((i, "chain"))
     event_points.append((gameover_frame_index, "gameover"))
     event_points = sorted(event_points)
-    print event_points
+
+    logger.debug("Event points: {}".format(event_points))
 
     events = []
     state = "NORMAL"
@@ -256,7 +266,7 @@ def make_event_list(
             raise RuntimeError("BUG: {}".format(state))
 
         if event is not None:
-            print "time={}, kind={}, move={}".format(event.time, event.kind, event.move)
+            logger.debug("Event: time={}, kind={}, move={}".format(event.time, event.kind, event.move))
             events.append(event)
         prev_field = field
 
@@ -365,10 +375,14 @@ def load_movie(movie_path):
         ret, frame = cap.read()
         if not ret:
             break
+
+        logger.debug("Loading movie frame #{}...".format(len(frames) + 1))
+
         # matplotlib でそのまま画像を表示できるように色を変換しておく
         img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         frames.append(img)
 
+    logger.info("Movie loaded")
     return frames
 
 
@@ -388,11 +402,13 @@ def main():
     frames = load_movie(args.movie_path)
 
     # 重要なフレームを検出する
+    logger.info("Detect important frames...")
     tsumo_frame_indices = detect_tsumo_frames(frames)
     chain_start_frame_indices = detect_chain_start_frames(frames, cross_mark_image, tsumo_frame_indices)
     gameover_frame_index = detect_gameover_frame(frames, background_image)
 
     # イベントリストを作る
+    logger.info("Building event list...")
     events = make_event_list(
         frames,
         tsumo_frame_indices,
@@ -402,6 +418,7 @@ def main():
         patterns)
 
     # 棋譜を生成して出力する
+    logger.info("Generating puyofu...")
     generate_puyofu(events)
 
 
